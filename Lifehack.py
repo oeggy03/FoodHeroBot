@@ -369,7 +369,8 @@ async def getfood(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         Foodname = cur.fetchall()[i][0]
 
         a = cur.execute("SELECT FoodPhoto FROM Foodlist")
-        rec_data = a[::-1][0][0]
+        for j in a:
+            rec_data = j[0]
         with open("foodphoto.png", "wb") as f:
             f.write(rec_data)
 

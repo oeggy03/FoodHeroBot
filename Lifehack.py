@@ -257,31 +257,23 @@ async def postfood7(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return LOCATION
 
-
 async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Ends the conversation."""
     answer = update.message.text
+    geocode_result = gmaps.geocode(answer)
+    lat = geocode_result[0]['geometry']['location']['lat']
+    long = geocode_result[0]['geometry']['location']['lng']
     user = update.message.from_user
     cur.execute("SELECT id FROM Foodlist WHERE username = ?",
                 (user.username, ))
     user_id = cur.fetchall()[-1][0]
     cur.execute("UPDATE Foodlist SET 'Location'= ? WHERE id = ?",
                 (answer, user_id))
+    cur.execute("UPDATE Foodlist SET 'Lat'= ? WHERE id = ?",
+                (lat, user_id))
+    cur.execute("UPDATE Foodlist SET 'Long'= ? WHERE id = ?",
+                (long, user_id))
     conn.commit()
-
-    # with open('users.json', 'r') as user_db:
-    #     users = json.load(user_db)
-    #
-    # location = update.message.text
-    # logger.info("Food location: %s", str(location))
-    # geocode_result = gmaps.geocode(location)
-    # lat = geocode_result[0]['geometry']['location']['lat']
-    # lng = geocode_result[0]['geometry']['location']['lng']
-    #
-    # if str(user.id) in users:
-    #     user_info = users[str(user.id)]
-    #     chat_id = user_info["chat_id"]
-    # await bot.send_location(chat_id=chat_id, latitude=lat, longitude=lng)
 
     logger.info("Bio of %s: %s", user.first_name, update.message.text)
 

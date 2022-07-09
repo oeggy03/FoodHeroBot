@@ -7,12 +7,16 @@ from dotenv import load_dotenv
 import logging
 import json
 import sqlite3
+import googlemaps
 
 conn = sqlite3.connect('FoodList.sqlite')
 cur = conn.cursor()
-BOT_TOKEN = "5445899302:AAFXbwblV5JqenYg3yInJUN_t6HwZhb8DPg" #HATHU BOT
-# BOT_TOKEN = '5498786983:AAHT5oyOBK5AMXb3JfY8KwyXxVjVL1Ec34I'  # LEXUAN BOT
-bot = ApplicationBuilder().token(BOT_TOKEN).build()
+#BOT_TOKEN = "5494197007:AAHd9ZEPe1BqdhlGJdf0LzJRoVP-S9XJSw4" #HATHU BOT
+BOT_TOKEN = '5498786983:AAHT5oyOBK5AMXb3JfY8KwyXxVjVL1Ec34I'  # LEXUAN BOT
+app = ApplicationBuilder().token(BOT_TOKEN).build()
+bot = Bot(token=BOT_TOKEN)
+gmaps = googlemaps.Client(key='AIzaSyDtO2n3z4jQJMIpZFTFCnKjeiXRjt2bJEk')
+
 
 # Make Database/ignore if present just incase
 # cur.executescript('''
@@ -20,7 +24,7 @@ bot = ApplicationBuilder().token(BOT_TOKEN).build()
 
 # CREATE TABLE Foodlist (
 #     id  INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-#     username    TEXT, 
+#     username    TEXT,
 #     FoodType    TEXT,
 #     FoodName    TEXT,
 #     FoodPhoto   BLOB,
@@ -47,7 +51,7 @@ Thank you!
 Please enter a pickup location for the food.'''
 
 
-##For /start function
+##For /start function, stores user information
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     user = update.effective_user
@@ -58,13 +62,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         users = json.load(user_db)
 
     if str(user.id) not in users:
+        logger.info("User %s saved.", user.first_name)
         user_info = {
             'username': user.username,
             'name': user.first_name,
             'chat_id': update.effective_chat.id,
             'rating': '5',
-            'dietary_restrictions': '',
-            'preferences': ''
+            'times_rated': '0',
+            'dietary_restrictions': [],
+            'preferences': []
             }
         users[user.id] = user_info
 
@@ -85,11 +91,13 @@ async def cancelpost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return ConversationHandler.END
 
-#Asks for type of food donated
+
+# Asks for type of food donated
 async def postfood0(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Asks for food type."""
-    user=update.effective_user
-    cur.execute("INSERT INTO Foodlist ('username') VALUES (?)", (user.username,))
+    user = update.effective_user
+    cur.execute("INSERT INTO Foodlist ('username') VALUES (?)",
+                (user.username,))
     conn.commit()
     reply_keyboard = [["Leftovers"],
                       ["Spare Food"]]
@@ -105,37 +113,43 @@ async def postfood0(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         ),
     )
 
-    return foodtype
+    return FOODTYPE
+
 
 #Asks for dish name
 async def postfood1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the conversation and asks the user about their gender."""
     user = update.message.from_user
-    Typefood= update.message.text
+    Typefood = update.message.text
     logger.info("%s will be contributing %s", user.first_name, Typefood)
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'FoodType'= ? WHERE id = ?", (Typefood,user_id))
+    cur.execute("UPDATE Foodlist SET 'FoodType'= ? WHERE id = ?",
+                (Typefood, user_id))
     await update.message.reply_text("Wow, that is great! Thank you for sharing! "
-        "What is the name of this dish/product/ingredient?")
-    return foodname
+                                    "What is the name of this dish/product/ingredient?")
+    return FOODNAME
+
 
 #Ask for image of food
 async def postfood2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Stores the selected gender and asks for a photo."""
     user = update.message.from_user
-    Namefood= update.message.text
+    Namefood = update.message.text
     logger.info("%s will be contributing %s", user.first_name, Namefood)
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'FoodName'= ? WHERE id = ?", (Namefood,user_id))
+    cur.execute("UPDATE Foodlist SET 'FoodName'= ? WHERE id = ?",
+                (Namefood, user_id))
     await update.message.reply_text(
         "Wow, that is great! Thank you for sharing! "
         "Please kindly upload a photo of the food product.",
         reply_markup=ReplyKeyboardRemove(),
     )
 
-    return foodphoto
+    return FOODPHOTO
 
 
 #Asks if food is halal
@@ -143,12 +157,13 @@ async def postfood3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     photo_file = await update.message.photo[-1].get_file()
     await photo_file.download("foodphoto.jpg")
     with open("foodphoto.jpg", "rb") as p:
-        data=p.read()
+        data = p.read()
     user = update.message.from_user
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'FoodPhoto'= ? WHERE id = ?", (data,user_id))
-    """Starts the conversation and asks the user about their gender."""
+    cur.execute("UPDATE Foodlist SET 'FoodPhoto'= ? WHERE id = ?",
+                (data, user_id))
     reply_keyboard = [["Yes"],
                       ["No"], ["Not Sure"]]
 
@@ -164,17 +179,18 @@ async def postfood3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         ),
     )
 
-    return halal
+    return HALAL
 
 
 #Asks if food is kosher
 async def postfood4(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the conversation and asks the user about their gender."""
-    answer= update.message.text
+    answer = update.message.text
     user = update.message.from_user
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'Halal'= ? WHERE id = ?", (answer,user_id))
+    cur.execute("UPDATE Foodlist SET 'Halal'= ? WHERE id = ?",
+                (answer, user_id))
     reply_keyboard = [["Yes"],
                       ["No"], ["Not Sure"]]
 
@@ -188,17 +204,18 @@ async def postfood4(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         ),
     )
 
-    return kosher
+    return KOSHER
 
 
 #Asks whether food is vegetarian
 async def postfood5(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the conversation and asks the user about their gender."""
-    answer= update.message.text
+    answer = update.message.text
     user = update.message.from_user
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'Kosher'= ? WHERE id = ?", (answer,user_id))
+    cur.execute("UPDATE Foodlist SET 'Kosher'= ? WHERE id = ?",
+                (answer, user_id))
     reply_keyboard = [["Yes"],
                       ["No"], ["Not Sure"]]
 
@@ -210,88 +227,127 @@ async def postfood5(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         ),
     )
 
-    return vegetarian
+    return VEGETARIAN
 
 
 #Ask for allergens in food
 async def postfood6(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the conversation and asks the user about their gender."""
-    answer= update.message.text
+    answer = update.message.text
     user = update.message.from_user
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'Vegetarian'= ? WHERE id = ?", (answer,user_id))
+    cur.execute("UPDATE Foodlist SET 'Vegetarian'= ? WHERE id = ?",
+                (answer, user_id))
+
     await update.message.reply_text(allergen_str)
 
-    return allergens
+    return ALLERGENS
 
 
 async def postfood7(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Starts the conversation and asks the user about their gender."""
-    answer= update.message.text
+    answer = update.message.text
     user = update.message.from_user
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'Allergens'= ? WHERE id = ?", (answer,user_id))
+    cur.execute("UPDATE Foodlist SET 'Allergens'= ? WHERE id = ?",
+                (answer, user_id))
     await update.message.reply_text(location_str)
 
-    return location
+    return LOCATION
 
 
 async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Ends the conversation."""
-    answer= update.message.text
+    answer = update.message.text
     user = update.message.from_user
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'Location'= ? WHERE id = ?", (answer,user_id))
+    cur.execute("UPDATE Foodlist SET 'Location'= ? WHERE id = ?",
+                (answer, user_id))
     conn.commit()
 
+    # with open('users.json', 'r') as user_db:
+    #     users = json.load(user_db)
+    #
+    # location = update.message.text
+    # logger.info("Food location: %s", str(location))
+    # geocode_result = gmaps.geocode(location)
+    # lat = geocode_result[0]['geometry']['location']['lat']
+    # lng = geocode_result[0]['geometry']['location']['lng']
+    #
+    # if str(user.id) in users:
+    #     user_info = users[str(user.id)]
+    #     chat_id = user_info["chat_id"]
+    # await bot.send_location(chat_id=chat_id, latitude=lat, longitude=lng)
+
     logger.info("Bio of %s: %s", user.first_name, update.message.text)
-    await update.message.reply_text("Thank you!"
-    )
+
+    await update.message.reply_text("Thank you!")
 
     return ConversationHandler.END
 
 
-foodtype, foodname, foodphoto, halal, kosher, allergens, vegetarian, location = range(8)
-conv_handler = ConversationHandler(
+# async def rate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     user=update.effective_user
+
+
+FOODTYPE, FOODNAME, FOODPHOTO, HALAL, KOSHER, ALLERGENS, VEGETARIAN, LOCATION = range(
+    8)
+postfood_handler = ConversationHandler(
         entry_points=[CommandHandler("postfood", postfood0)],
         states={
-            foodtype: [MessageHandler(filters.Regex("^(Leftovers|Spare Food)$"), postfood1)],
-            foodname: [MessageHandler(filters.TEXT, postfood2)],
-            foodphoto: [
-                MessageHandler(filters.PHOTO, postfood3),
-                # CommandHandler("skip", skip_photo)
-            ],
-            halal: [
-                MessageHandler(filters.Regex(
-                    "^(Yes|No|Not Sure)$"), postfood4),
-                # CommandHandler("skip", skip_location),
-            ],
-            kosher: [
-                MessageHandler(filters.Regex(
-                    "^(Yes|No|Not Sure)$"), postfood5),
-                # CommandHandler("skip", skip_location),
-            ],
-            vegetarian: [
-                MessageHandler(filters.Regex(
-                    "^(Yes|No|Not Sure)$"), postfood6),
-                # CommandHandler("skip", skip_location),
-            ],
-            allergens: [
-                MessageHandler(filters.TEXT, postfood7),
-                # CommandHandler("skip", skip_location),
-            ],
-            location: [
-                MessageHandler(filters.TEXT, review),
-                # CommandHandler("skip", skip_location),
-            ]
-
+                FOODTYPE: [MessageHandler(filters.Regex("^(Leftovers|Spare Food)$"), postfood1)],
+                FOODNAME: [MessageHandler(filters.TEXT, postfood2)],
+                FOODPHOTO: [
+                    MessageHandler(filters.PHOTO, postfood3),
+                    # CommandHandler("skip", skip_photo)
+                ],
+                HALAL: [
+                    MessageHandler(filters.Regex(
+                        "^(Yes|No|Not Sure)$"), postfood4),
+                    # CommandHandler("skip", skip_location),
+                ],
+                KOSHER: [
+                    MessageHandler(filters.Regex(
+                        "^(Yes|No|Not Sure)$"), postfood5),
+                    # CommandHandler("skip", skip_location),
+                ],
+                VEGETARIAN: [
+                    MessageHandler(filters.Regex(
+                        "^(Yes|No|Not Sure)$"), postfood6),
+                    # CommandHandler("skip", skip_location),
+                ],
+                ALLERGENS: [
+                    MessageHandler(filters.TEXT, postfood7),
+                    # CommandHandler("skip", skip_location),
+                ],
+                LOCATION: [
+                    MessageHandler(filters.TEXT, review),
+                    # CommandHandler("skip", skip_location),
+                ]
         },
         fallbacks=[CommandHandler("cancel", cancelpost)],
     )
 
+# SELECT_USER, RATING, REVIEW = range(3)
+# ratings_handler = ConversationHandler(
+#         entry_points=[CommandHandler("rate", rate)],
+#         states={
+#             SELECT_USER: [
+#                 MessageHandler(filters.TEXT, callback)
+#             ],
+#             RATING: [
+#                 MessageHandler(filters.Regex("^[1-5]$"), rating),
+#             ],
+#             REVIEW: [
+#                 MessageHandler(filters.TEXT, review),
+#             ]
+#         },
+#         fallbacks=[CommandHandler("cancel", cancelpost)],
+#     )
 
 ##logging function in console
 logging.basicConfig(
@@ -299,6 +355,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-bot.add_handler(CommandHandler("start", start))
-bot.add_handler(conv_handler)
-bot.run_polling()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(postfood_handler)
+#app.add_handler(ratings_handler)
+app.run_polling()

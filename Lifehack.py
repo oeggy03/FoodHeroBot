@@ -70,7 +70,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             'rating': '5',
             'times_rated': '0',
             'dietary_restrictions': [],
-            'preferences': '[]
+            'preferences': []
             }
         users[user.id] = user_info
 
@@ -283,23 +283,22 @@ async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     #     chat_id = user_info["chat_id"]
     # await bot.send_location(chat_id=chat_id, latitude=lat, longitude=lng)
 
-    logger.info("Bio of %s: %s", user.first_name, update.message.text))
+    logger.info("Bio of %s: %s", user.first_name, update.message.text)
 
-        await update.message.reply_text("Thank you!")
+    await update.message.reply_text("Thank you!")
 
-        return ConversationHandler.END
-
-
-        async def rate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        user=update.effective_user
-        pass
+    return ConversationHandler.END
 
 
-        FOODTYPE, FOODNAME, FOODPHOTO, HALAL, KOSHER, ALLERGENS, VEGETARIAN, LOCATION=range(
-    7)
-postfood_handler=ConversationHandler(
-        entry_points = [CommandHandler("postfood", postfood0)],
-        states = {
+# async def rate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     user=update.effective_user
+
+
+FOODTYPE, FOODNAME, FOODPHOTO, HALAL, KOSHER, ALLERGENS, VEGETARIAN, LOCATION = range(
+    8)
+postfood_handler = ConversationHandler(
+        entry_points=[CommandHandler("postfood", postfood0)],
+        states={
                 FOODTYPE: [MessageHandler(filters.Regex("^(Leftovers|Spare Food)$"), postfood1)],
                 FOODNAME: [MessageHandler(filters.TEXT, postfood2)],
                 FOODPHOTO: [
@@ -330,34 +329,33 @@ postfood_handler=ConversationHandler(
                     # CommandHandler("skip", skip_location),
                 ]
         },
-    fallbacks = [CommandHandler("cancel", cancelpost)],
+    fallbacks=[CommandHandler("cancel", cancelpost)],
     )
 
-
-        # SELECT_USER, RATING, REVIEW = range(3)
-        # ratings_handler = ConversationHandler(
-        #         entry_points=[CommandHandler("rate", rate)],
-        #         states={
-        #             SELECT_USER: [
-        #                 MessageHandler(filters.TEXT, callback)
-        #             ],
-        #             RATING: [
-        #                 MessageHandler(filters.Regex("^[1-5]$"), rating),
-        #             ],
-        #             REVIEW: [
-        #                 MessageHandler(filters.TEXT, review),
-        #             ]
-        #         },
-        #         fallbacks=[CommandHandler("cancel", cancelpost)],
-        #     )
+# SELECT_USER, RATING, REVIEW = range(3)
+# ratings_handler = ConversationHandler(
+#         entry_points=[CommandHandler("rate", rate)],
+#         states={
+#             SELECT_USER: [
+#                 MessageHandler(filters.TEXT, callback)
+#             ],
+#             RATING: [
+#                 MessageHandler(filters.Regex("^[1-5]$"), rating),
+#             ],
+#             REVIEW: [
+#                 MessageHandler(filters.TEXT, review),
+#             ]
+#         },
+#         fallbacks=[CommandHandler("cancel", cancelpost)],
+#     )
 
 ##logging function in console
 logging.basicConfig(
-format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s", level = logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
-logger=logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(postfood_handler)
-app.add_handler(ratings_handler)
+#app.add_handler(ratings_handler)
 app.run_polling()

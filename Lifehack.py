@@ -140,7 +140,7 @@ async def postfood4(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return kosher
 
 
-#Ask for allergens in food
+#Asks whether food is vegetarian
 async def postfood5(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the conversation and asks the user about their gender."""
     reply_keyboard = [["Yes"],
@@ -157,7 +157,7 @@ async def postfood5(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return vegetarian
 
 
-#Asks whether food is vegetarian
+#Ask for allergens in food
 async def postfood6(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Starts the conversation and asks the user about their gender."""
 

@@ -11,8 +11,8 @@ import googlemaps
 
 conn = sqlite3.connect('FoodList.sqlite')
 cur = conn.cursor()
-BOT_TOKEN = "5445899302:AAFXbwblV5JqenYg3yInJUN_t6HwZhb8DPg" #HATHU BOT
-# BOT_TOKEN = '5498786983:AAHT5oyOBK5AMXb3JfY8KwyXxVjVL1Ec34I'  # LEXUAN BOT
+# BOT_TOKEN = "5445899302:AAFXbwblV5JqenYg3yInJUN_t6HwZhb8DPg"  # HATHU BOT
+BOT_TOKEN = '5498786983:AAHT5oyOBK5AMXb3JfY8KwyXxVjVL1Ec34I'  # LEXUAN BOT
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 bot = Bot(token=BOT_TOKEN)
 gmaps = googlemaps.Client(key='AIzaSyDtO2n3z4jQJMIpZFTFCnKjeiXRjt2bJEk')
@@ -122,9 +122,11 @@ async def postfood1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     Typefood = update.message.text
     logger.info("%s will be contributing %s", user.first_name, Typefood)
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?",(user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'FoodType'= ? WHERE id = ?",(Typefood, user_id))
+    cur.execute("UPDATE Foodlist SET 'FoodType'= ? WHERE id = ?",
+                (Typefood, user_id))
     await update.message.reply_text("Wow, that is great! Thank you for sharing!\n"
                                     "What is the name of this dish/product/ingredient?")
     return FOODNAME
@@ -242,6 +244,7 @@ async def postfood6(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return ALLERGENS
 
+
 #Ask for pickup location
 async def postfood7(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     answer = update.message.text
@@ -255,53 +258,65 @@ async def postfood7(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return LOCATION
 
+
 #Review post
 async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    answer= update.message.text
+    answer = update.message.text
     user = update.message.from_user
-    cur.execute("SELECT id FROM Foodlist WHERE username = ?", (user.username, ))
+    cur.execute("SELECT id FROM Foodlist WHERE username = ?",
+                (user.username, ))
     user_id = cur.fetchall()[-1][0]
-    cur.execute("UPDATE Foodlist SET 'Location'= ? WHERE id = ?", (answer,user_id))
+    cur.execute("UPDATE Foodlist SET 'Location'= ? WHERE id = ?",
+                (answer, user_id))
+    geocode_result = gmaps.geocode(answer)
+    lat = geocode_result[0]['geometry']['location']['lat']
+    long = geocode_result[0]['geometry']['location']['lng']
+    cur.execute("UPDATE Foodlist SET 'Location'= ? WHERE id = ?",
+                (answer, user_id))
+    cur.execute("UPDATE Foodlist SET 'Lat'= ? WHERE id = ?",
+                (lat, user_id))
+    cur.execute("UPDATE Foodlist SET 'Long'= ? WHERE id = ?",
+                (long, user_id))
 
     #SaveMe-Reviewfetch from SQL
-    cur.execute("SELECT FoodName FROM Foodlist WHERE id = ?",(user_id,))
-    Foodname= cur.fetchone()[0]
-    
-    a=cur.execute("SELECT FoodPhoto FROM Foodlist WHERE id = ?",(user_id,))
+    cur.execute("SELECT FoodName FROM Foodlist WHERE id = ?", (user_id,))
+    Foodname = cur.fetchone()[0]
+
+    a = cur.execute("SELECT FoodPhoto FROM Foodlist WHERE id = ?", (user_id,))
     for i in a:
-        rec_data=i[0]
+        rec_data = i[0]
         print(type(rec_data))
-    with open("foodphoto.png","wb") as f:
+    with open("foodphoto.png", "wb") as f:
         f.write(rec_data)
 
-    cur.execute("SELECT FoodType FROM Foodlist WHERE id = ?",(user_id,))
-    Foodtype= cur.fetchone()[0]
+    cur.execute("SELECT FoodType FROM Foodlist WHERE id = ?", (user_id,))
+    Foodtype = cur.fetchone()[0]
 
-    cur.execute("SELECT Halal FROM Foodlist WHERE id = ?",(user_id,))
-    Foodhalal= cur.fetchone()[0]
+    cur.execute("SELECT Halal FROM Foodlist WHERE id = ?", (user_id,))
+    Foodhalal = cur.fetchone()[0]
 
-    cur.execute("SELECT Kosher FROM Foodlist WHERE id = ?",(user_id,))
-    Foodkosher= cur.fetchone()[0]
+    cur.execute("SELECT Kosher FROM Foodlist WHERE id = ?", (user_id,))
+    Foodkosher = cur.fetchone()[0]
 
-    cur.execute("SELECT Vegetarian FROM Foodlist WHERE id = ?",(user_id,))
-    Foodvege= cur.fetchone()[0]
+    cur.execute("SELECT Vegetarian FROM Foodlist WHERE id = ?", (user_id,))
+    Foodvege = cur.fetchone()[0]
 
-    cur.execute("SELECT Allergens FROM Foodlist WHERE id = ?",(user_id,))
-    Foodaller= cur.fetchone()[0]
+    cur.execute("SELECT Allergens FROM Foodlist WHERE id = ?", (user_id,))
+    Foodaller = cur.fetchone()[0]
 
-    cur.execute("SELECT Location FROM Foodlist WHERE id = ?",(user_id,))
-    Foodloca= cur.fetchone()[0]
+    cur.execute("SELECT Location FROM Foodlist WHERE id = ?", (user_id,))
+    Foodloca = cur.fetchone()[0]
 
     logger.info("Bio of %s: %s", user.first_name, update.message.text)
-    await update.message.reply_photo(photo= open("foodphoto.png",'rb'), caption= "Thank you! Here is a preview of your post:\n\n"+
-    "Food Name: "+ Foodname +"\n"
-    "Food Type: "+ Foodtype +"\n"
-    "Is it Halal?: "+ Foodhalal +"\n"
-    "Is it Kosher?: "+ Foodkosher +"\n"
-    "Is it vegetarian?: "+ Foodvege +"\n"
-    "Potential Allergens: "+ Foodaller +"\n"
-    "Pickup Location: "+ Foodloca
-    )
+    await update.message.reply_photo(photo=open("foodphoto.png", 'rb'), caption="Thank you! Here is a preview of your post:\n\n" +
+                                     "Food Name: " + Foodname + "\n"
+                                     "Food Type: " + Foodtype + "\n"
+                                     "Is it Halal?: " + Foodhalal + "\n"
+                                     "Is it Kosher?: " + Foodkosher + "\n"
+                                     "Is it vegetarian?: " + Foodvege + "\n"
+                                     "Potential Allergens: " + Foodaller + "\n"
+                                     "Pickup Location: " + Foodloca
+                                     )
 
     reply_keyboard = [["Yes, post it!"],
                       ["No, let's start over."]]
@@ -316,6 +331,8 @@ async def review(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ENDING
 
 #Agree to post
+
+
 async def wantpost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Option: Post it."""
     conn.commit()
@@ -328,6 +345,8 @@ async def wantpost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 #Start over
+
+
 async def startover(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Option: Start over."""
     conn.rollback()
@@ -339,7 +358,58 @@ async def startover(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     return ConversationHandler.END
 
-FOODTYPE, FOODNAME, FOODPHOTO, HALAL, KOSHER, ALLERGENS, VEGETARIAN, LOCATION, ENDING = range(9)
+
+async def getfood(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Shows food items available"""
+    user = update.message.from_user
+    id_count = cur.execute("SELECT COUNT (id) FROM FoodList").fetchall()[0][0]
+    display_times = 3 if id_count > 3 else id_count
+    for i in range(display_times):
+        cur.execute("SELECT FoodName FROM Foodlist")
+        Foodname = cur.fetchall()[i][0]
+
+        a = cur.execute("SELECT FoodPhoto FROM Foodlist")
+        for j in a:
+            rec_data = j[0]
+        with open("foodphoto.png", "wb") as f:
+            f.write(rec_data)
+
+        cur.execute("SELECT FoodType FROM Foodlist")
+        Foodtype = cur.fetchall()[i][0]
+
+        cur.execute("SELECT Halal FROM Foodlist")
+        Foodhalal = cur.fetchall()[i][0]
+
+        cur.execute("SELECT Kosher FROM Foodlist")
+        Foodkosher = cur.fetchall()[i][0]
+
+        cur.execute("SELECT Vegetarian FROM Foodlist")
+        Foodvege = cur.fetchall()[i][0]
+
+        cur.execute("SELECT Allergens FROM Foodlist")
+        Foodaller = cur.fetchall()[i][0]
+
+        cur.execute("SELECT Location FROM Foodlist")
+        Foodloca = cur.fetchall()[i][0]
+
+        logger.info("Bio of %s: %s", user.first_name, update.message.text)
+        await update.message.reply_photo(photo=open("foodphoto.png", 'rb'), caption="Thank you! Here is a preview of your post:\n\n" +
+                                         "Food Name: " + Foodname + "\n"
+                                         "Food Type: " + Foodtype + "\n"
+                                         "Is it Halal?: " + Foodhalal + "\n"
+                                         "Is it Kosher?: " + Foodkosher + "\n"
+                                         "Is it vegetarian?: " + Foodvege + "\n"
+                                         "Potential Allergens: " + Foodaller + "\n"
+                                         "Pickup Location: " + Foodloca
+                                         )
+
+
+# async def rate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     user=update.effective_user
+
+
+FOODTYPE, FOODNAME, FOODPHOTO, HALAL, KOSHER, ALLERGENS, VEGETARIAN, LOCATION, ENDING = range(
+    9)
 #convo handler for /postfood
 postfood_handler = ConversationHandler(
         entry_points=[CommandHandler("postfood", postfood0)],
@@ -375,16 +445,13 @@ postfood_handler = ConversationHandler(
             ],
             ENDING: [
                 MessageHandler(filters.Regex("^(Yes, post it!)$"), wantpost),
-                MessageHandler(filters.Regex("^(No, let's start over.)$"), startover),
+                MessageHandler(filters.Regex(
+                    "^(No, let's start over.)$"), startover),
                 # CommandHandler("skip", skip_location),
             ]
         },
         fallbacks=[CommandHandler("cancel", cancelpost)],
     )
-
-
-# async def rate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     user=update.effective_user
 
 # SELECT_USER, RATING, REVIEW = range(3)
 # ratings_handler = ConversationHandler(
@@ -410,6 +477,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("getfood", getfood))
 app.add_handler(postfood_handler)
 #app.add_handler(ratings_handler)
 app.run_polling()

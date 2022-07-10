@@ -69,7 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cur.execute("SELECT chat_id FROM Users WHERE username =?",(user.username,))
     if cur.fetchone() == None:
         logger.info("User %s saved.", user.first_name)
-        cur.execute("INSERT INTO Users(username,name,chat_id,rating,times_rated) VALUES(?,?,?,?,?)",(user.username,user.first_name,update.effective_chat.id,5,0))
+        cur.execute("INSERT INTO Users(username,name,chat_id,rating,times_rated,active_buy) VALUES(?,?,?,?,?,?)",(user.username,user.first_name,update.effective_chat.id,5,0,0))
         conn.commit()
         # user_info = {
         #     'username': user.username,
@@ -417,8 +417,7 @@ async def exitmyposts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     conn.rollback()
 
     await update.message.reply_text(
-        "Alright! You may always view your posts again by typing /myposts."
-        "See you next time!", reply_markup=ReplyKeyboardRemove()
+        "Alright! \nYou may always view your posts again by typing /myposts.", reply_markup=ReplyKeyboardRemove()
     )
 
     return ConversationHandler.END
@@ -700,8 +699,8 @@ async def completeseller(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text("You have not posted any items yet. Try typing /postfood to post your first one today!")
     else:
         for i in range(len(sellinfo)):
-            if sellinfo[i][0]==0:
-                #Ask If they want to confirm order
+            if int(sellinfo[i][0])==0:
+                cur.execute()
             
             else:
                 continue

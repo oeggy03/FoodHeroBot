@@ -649,6 +649,57 @@ async def getfood0(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     return FOODCATA
 
+async def rate(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user = update.effective_user
+    await update.message.reply_text(
+        "Who would you like to rate? Please enter their Telegram handle.", reply_markup=ReplyKeyboardRemove()
+         )
+    return SELECT_USER
+
+
+async def userSelect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    temp_user_to_rate = update.message.text
+    await update.message.reply_text(
+        "What would you rate them as? (1 to 5, only whole numbers)", reply_markup=ReplyKeyboardRemove()
+         )
+    return RATING
+
+
+async def userScore(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    score_rated = update.message.text
+    user_id = cur.execute("SELECT username FROM Users WHERE username = ?",
+                          (temp_user_to_rate, )).fetchall()[-1][0]
+    cur.execute("SELECT rating FROM Users WHERE username = ?",
+                (temp_user_to_rate, ))
+    average_rating = float(cur.fetchall()[-1][0])
+    cur.execute("SELECT times_rated FROM Users WHERE username = ?",
+                (temp_user_to_rate, ))
+    times_rated = int(cur.fetchall()[-1][0])
+    cur.execute("UPDATE Users SET 'rating'= ? WHERE id = ?",
+                (str((average_rating*times_rated + score_rated)/times_rated + 1), user_id))
+    cur.execute("UPDATE Users SET 'times_rated'= ? WHERE id = ?",
+                (str(times_rated + 1), user_id))
+    return
+
+SELECT_USER, RATING = range(2)
+temp_user_to_rate = ""
+ratings_handler = ConversationHandler(
+         entry_points=[CommandHandler("rate", rate)],
+         states={
+             SELECT_USER: [
+                 MessageHandler(filters.TEXT, userSelect)
+             ],
+             RATING: [
+                 MessageHandler(filters.Regex("^[1-5]$"), userScore),
+             ]
+         },
+         fallbacks=[CommandHandler("cancel", cancel)],
+     )
+
+
+app.add_handler(ratings_handler)
+app.run_polling()
+
 async def getfood1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Start Transaction"""
     conn.rollback()

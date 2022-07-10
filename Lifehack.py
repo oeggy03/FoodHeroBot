@@ -55,6 +55,16 @@ Allergens may be found listed on the back of food packaging. If there are no all
 location_str = '''
 Thank you!
 Please enter a pickup location for the food.'''
+help_str = '''This bot helps you save your leftover food and groceries by giving them to other users.
+
+Here are some helpful commands:
+/start - registers your account
+/help - lists operable commands
+/postfood - post your leftover food
+/getfood - show and collect someone else's leftover food
+/myposts - shows food you've posted
+/completeseller - complete the transaction (for sellers)
+/completebuyer - complete the transaction (for buyers)'''
 
 
 ##For /start function, stores user information
@@ -84,6 +94,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         # with open('users.json', 'w') as user_db:
         #     json.dump(users, user_db)
+        
+   
+#For the /help function
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /start is issued."""
+    user = update.effective_user
+    await update.message.reply_text(help_str)
+    cur.execute("SELECT chat_id FROM Users WHERE username =?",
+                (user.username,))
+    if cur.fetchone() == None:
+        logger.info("User %s saved.", user.first_name)
+        cur.execute("INSERT INTO Users(username,name,chat_id,rating,times_rated,active_buy) VALUES(?,?,?,?,?,?)",
+                    (user.username, user.first_name, update.effective_chat.id, 5, 0, 0))
+        conn.commit()
 
 
 ##For /postfood function
@@ -773,6 +797,7 @@ completepost_handler = ConversationHandler(
 
 
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("help", help))
 app.add_handler(postfood_handler)
 app.add_handler(myposts_handler)
 app.add_handler(getfood_handler)

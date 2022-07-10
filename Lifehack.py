@@ -88,14 +88,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 ##For /postfood function
 #/cancel function
-async def cancelpost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancels and ends the conversation."""
     user = update.message.from_user
     conn.rollback()
     logger.info("User %s canceled the conversation.", user.first_name)
     await update.message.reply_text(
         "Alright! You may always start again by typing /start."
-        "See you next time!", reply_markup=ReplyKeyboardRemove()
+        , reply_markup=ReplyKeyboardRemove()
     )
 
     return ConversationHandler.END
@@ -106,8 +106,8 @@ async def postfood0(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Asks for food type."""
     user = update.effective_user
     conn.rollback()
-    cur.execute("INSERT INTO Foodlist ('username') VALUES (?)",
-                (user.username,))
+    cur.execute("INSERT INTO Foodlist ('username', 'Hide') VALUES (?,?)",(user.username,0,))
+
     reply_keyboard = [["Leftovers"],
                       ["Spare Food"]]
 
@@ -405,22 +405,21 @@ postfood_handler = ConversationHandler(
                 # CommandHandler("skip", skip_location),
             ]
         },
-        fallbacks=[CommandHandler("cancel", cancelpost)],
+        fallbacks=[CommandHandler("cancel", cancel)],
     )
-
 
 
 ##/myposts
 #/exitmyposts function
-async def exitmyposts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Cancels and ends the conversation."""
-    conn.rollback()
+# async def exitmyposts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # """Cancels and ends the conversation."""
+    # conn.rollback()
 
-    await update.message.reply_text(
-        "Alright! \nYou may always view your posts again by typing /myposts.", reply_markup=ReplyKeyboardRemove()
-    )
+    # await update.message.reply_text(
+    #     "Alright! \nYou may always view your posts again by typing /myposts.", reply_markup=ReplyKeyboardRemove()
+    # )
 
-    return ConversationHandler.END
+    # return ConversationHandler.END
 
 async def myposts0(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Shows you a list of your posts"""
@@ -553,9 +552,8 @@ myposts_handler = ConversationHandler(
             CONFIRM: [MessageHandler(filters.Regex("^(Yes)$") & (~filters.COMMAND), cancelpost),
                       MessageHandler(filters.Regex("^(No)$") & (~filters.COMMAND), myposts0)]
         },
-        fallbacks=[CommandHandler("exitmyposts", exitmyposts)],
+        fallbacks=[CommandHandler("cancel", cancel)],
     )
-
 
 
 ##getfood
@@ -566,14 +564,14 @@ async def getfood0(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     cur.execute("INSERT OR IGNORE INTO ScrollTrack(scrollcount,username) VALUES (?,?)", (0,user.username,))
     cur.execute("SELECT scrollcount FROM ScrollTrack WHERE username = ?",(user.username,))
     x=cur.fetchone()[0]
-    id_count = cur.execute("SELECT COUNT (id) FROM FoodList").fetchall()[0][0]
+    id_count = cur.execute("SELECT COUNT (id) FROM FoodList WHERE Hide=?",(0,)).fetchall()[0][0]
 
     if x>=id_count:
         cur.execute("UPDATE ScrollTrack SET scrollcount =? WHERE username= ?", (0,user.username,))
         cur.execute("SELECT scrollcount FROM ScrollTrack WHERE username = ?",(user.username,))
         x=cur.fetchone()[0]
 
-    cur.execute("SELECT id FROM Foodlist")
+    cur.execute("SELECT id FROM Foodlist WHERE Hide = ?",(0,))
     temp_id=cur.fetchall()[x][0]
     pic=cur.execute("SELECT FoodPhoto from Foodlist WHERE id = ?", (temp_id,))
     with open("foodphoto.png", "wb") as f:
@@ -639,6 +637,12 @@ async def getfood1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     (seller_user,buyer_user,item_id,seller_complete,buyer_complete,transaction_complete,buyer_chat,seller_chat) VALUES (?, ? ,?, ?,?,?,?,?)''',
     (seller,user.username,select_id,0,0,0,update.effective_chat.id,chatseller)) #NEEDS SELLER'S CHAT_ID
 
+    chat_id= update.effective_chat.id
+    cur.execute("SELECT lat FROM Foodlist WHERE ID=?",(select_id,))
+    lat=cur.fetchone()[0]
+    cur.execute("SELECT Long FROM Foodlist WHERE ID=?",(select_id,))
+    lng=cur.fetchone()[0]
+
     cur.execute("SELECT active_buy FROM Users WHERE username=?",(user.username,))
     eligible=int(cur.fetchone()[0])
     if eligible == 1:
@@ -651,22 +655,33 @@ async def getfood1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_keyboard = [["Yes, I am sure!"],
                         ["No, let me pick again."]]
 
-        await update.message.reply_text("This food listing was posted by @"+ seller_id +", who has a rating of" + str(sellerrate) +" out of " + str(sellertimesrate) + " times.\n\n"
+        await update.message.reply_text("This food listing was posted by @"+ seller_id +", who has a rating of " + str(sellerrate) +" out of " + str(sellertimesrate) + " reviews.\n\n"
                                         + "Would you like to confirm this selection?",
                                         reply_markup=ReplyKeyboardMarkup(
                                             reply_keyboard, one_time_keyboard=True, input_field_placeholder="Please select the appropriate option."     
                                         )
         )
+        await bot.send_location(chat_id=chat_id, latitude=lat, longitude=lng)
+        
 
         return CONFIRMPUR
 
 async def getfood2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Transaction confirmed"""
     user = update.effective_user
-    cur.execute("UPDATE Users SET active_buy=1 where username = ?",(user.username))
+    select_id = int(context.user_data["select_id"])
+    cur.execute("UPDATE Users SET active_buy=1 WHERE username = ?",(user.username,))
+    cur.execute("UPDATE Foodlist SET hide=1 WHERE id = ?",(select_id,))
+    cur.execute("SELECT username FROM Foodlist WHERE id=?",(select_id,))
+    seller=cur.fetchone()[0]
     conn.commit()
+    await update.message.reply_text("You have successfully reserved the food item!\n"+
+        "You may also contact the poster directly at @" + seller +" .\n\n\n"
+        +"When you have received the food and completed the transaction, please do /rating.")
+
+    return ConversationHandler.END
     
-    #HELP WRITE THIS PLS :(
+    
 
 
 FOODCATA, CONFIRMPUR = range(2)
@@ -674,47 +689,95 @@ getfood_handler = ConversationHandler(
         entry_points=[CommandHandler("getfood", getfood0)],
         states={
             FOODCATA: [MessageHandler(filters.Regex("^(I would like this!)$"), getfood1),
-                       MessageHandler(filters.Regex("^(Please show me another post.)$"), getfood0),
-                       MessageHandler(filters.Regex("^(Please give me a list of all posts.)$"), getfood0)], #Will scrap this one if no time
-            CONFIRMPUR: [MessageHandler(filters.Regex("^(I would like this!)$"), getfood2),
+                       MessageHandler(filters.Regex("^(Please show me another post.)$"), getfood0)],
+            CONFIRMPUR: [MessageHandler(filters.Regex("^(Yes, I am sure!)$"), getfood2),
                          MessageHandler(filters.Regex("^(No, let me pick again.)$"), getfood0)],
-            # POSTRESULT: [MessageHandler(filters.Regex("^(Remove post)$"), removal),
-            #              MessageHandler(filters.Regex("^(Return to post menu)$"), myposts0)],
-            # CONFIRM: [MessageHandler(filters.Regex("^(Yes)$") & (~filters.COMMAND), cancelpost),
-            #           MessageHandler(filters.Regex("^(No)$") & (~filters.COMMAND), myposts0)]
         },
-        fallbacks=[CommandHandler("exitmyposts", exitmyposts)],
+        fallbacks=[CommandHandler("cancel", cancel)],
     )
 
-# async def completebuyer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# async def completeget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 #     """For Buyer to confirm any listing."""
 
-## for /completeseller handler: for seller to complete any ongoing orders and delete them
-async def completeseller(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+## for /completepost handler: for seller to complete any ongoing orders and delete them
+async def completepost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """For Seller to confirm any listing."""
     user=update.effective_user
-    cur.execute("SELECT seller_complete FROM Transactions WHERE seller_user=?",(user.username))
+    print(user.username)
+    cur.execute("SELECT seller_complete FROM Transactions WHERE seller_user=?",(user.username,))
     sellinfo = cur.fetchall()
+    complete_str=''''''
     if sellinfo == None:
         await update.message.reply_text("You have not posted any items yet. Try typing /postfood to post your first one today!")
     else:
         for i in range(len(sellinfo)):
             if int(sellinfo[i][0])==0:
-                cur.execute()
-            
+                cur.execute("SELECT item_id FROM Transactions WHERE seller_user=?",(user.username))
+                temp_id=int(cur.fetchall()[i][0])
+                cur.execute("SELECT Foodname FROM Foodlist WHERE id=?",(temp_id,))
+                Foodnamee= cur.fetchone()[0]
+                complete_str= complete_str + "Transaction No. " + str(i+1) + ": " + Foodnamee + ". \n"
             else:
                 continue
         
         #Tell them that all orders are confirmed.
+    await update.message.reply_text("Here are the food postings where you have not confirmed the transaction's completion.\n" 
+    +"Type in the transaction number you wish to confirm.\n\n" + "Type /cancel to exit")
 
-    return confirmation
+    return confirmationpost
+
+#completepost - confirm 
+async def completepost1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Delete listing."""
+    try:
+        choice= (int(update.message.text)-1)
+        fsdfsf= sqrt(choice)
+        user=update.effective_user
+        cur.execute("SELECT item_id FROM Transactions WHERE seller_user=?",(user.username))
+        sellinfo = cur.fetchall()
+    except:
+        await update.message.reply_text("Invalid Input. Please try again!")
+
+        return ConversationHandler.END
+
+    x = int(sellinfo[choice][0])
+    cur.execute("SELECT Foodname FROM Foodlist WHERE id =?",(x,))
+    foodname=cur.fetchone()[0]
+    cur.execute("SELECT buyer_chat FROM Transactions WHERE id =?",(x,))
+    buyerid=cur.fetchone()[0]
+    cur.execute("UPDATE Transactions SET seller_complete = ? WHERE item_id=?",(1,x,))
+    cur.execute("SELECT buyer_complete FROM Transactions WHERE item_id =?",(x,))
+    cur.execute("DELETE * FROM Foodlist WHERE id=?",(x,))
+    if (cur.fetchone()[0]) == 1:
+        await update.message.reply_text("Order \""+ foodname +"\" has been completed! Type /rating to leave the poster a rating.", chat_id=buyerid)
+        await update.message.reply_text("Order \""+ foodname +"\" has been completed!", chat_id=update._effective_chat.id)
+
+
+    return ConversationHandler.END
+    
+confirmationpost = range(1)
+#completepost handler
+completepost_handler = ConversationHandler(
+        entry_points=[CommandHandler("completepost", completepost)],
+        states={
+            confirmationpost: [MessageHandler(filters.TEXT & (~filters.COMMAND), completepost1),], #Will scrap this one if no time
+            # POSTRESULT: [MessageHandler(filters.Regex("^(Remove post)$"), removal),
+            #              MessageHandler(filters.Regex("^(Return to post menu)$"), myposts0)],
+            # CONFIRM: [MessageHandler(filters.Regex("^(Yes)$") & (~filters.COMMAND), cancelpost),
+            #           MessageHandler(filters.Regex("^(No)$") & (~filters.COMMAND), myposts0)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )       
+
+
 
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(postfood_handler)
 app.add_handler(myposts_handler)
 app.add_handler(getfood_handler)
-#app.add_handler(ratings_handler)
+app.add_handler(myposts_handler)
+app.add_handler(completepost_handler)
 app.run_polling()
 
 # async def getfood(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

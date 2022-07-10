@@ -698,7 +698,6 @@ ratings_handler = ConversationHandler(
 
 
 app.add_handler(ratings_handler)
-app.run_polling()
 
 async def getfood1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Start Transaction"""

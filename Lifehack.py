@@ -13,7 +13,8 @@ import googlemaps
 
 conn = sqlite3.connect('FoodList.sqlite')
 cur = conn.cursor()
-BOT_TOKEN = "5445899302:AAFXbwblV5JqenYg3yInJUN_t6HwZhb8DPg"  # HATHU BOT
+BOT_TOKEN = "Your own telegram bot token here"
+# BOT_TOKEN = "5445899302:AAFXbwblV5JqenYg3yInJUN_t6HwZhb8DPg"  # HATHU BOT
 # BOT_TOKEN = '5498786983:AAHT5oyOBK5AMXb3JfY8KwyXxVjVL1Ec34I'  # LEXUAN BOT
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 bot = Bot(token=BOT_TOKEN)

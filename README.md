@@ -16,9 +16,7 @@ This bot was created within 24 hours for the Lifehack 2022 hackathon. You may fi
 2. Install Python 3
 3. Clone this repository to by running `git clone https://github.com/oeggy/TelegramBot`
 4. Get inside the repository folder by running `cd TelegramBot`
-5. Using Telegram, create your own bot with Botfather and obtain an API key.
-6. Edit Lifehack.py with your editor and replace the API key with your own.
-7. Finally, run the program using `python3 Lifehack.py`
+5. Finally, run the program using `python3 Lifehack.py`
 
 
 ## How to Use

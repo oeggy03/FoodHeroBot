@@ -24,3 +24,4 @@ This bot was created within 24 hours for the Lifehack 2022 hackathon. You may fi
 2. To share your leftover food, run `/postfood`
 3. To retrieve food someone else has posted, run `/getfood`
 4. To see what food you have posted and to remove expired listings, run `/myposts`
+5. To view all other commands, run `/help`
